@@ -8,7 +8,6 @@ public class Server {
     private static final int port = 8082;
 
     public static void main(String[] args) {
-        JDBCService jdbcService = new JDBCService();
         try(ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server started on port " + port);
             while(true) {

@@ -1,8 +1,6 @@
 package server;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class JDBCService {
     private final Connection connection;
