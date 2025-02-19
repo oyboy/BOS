@@ -72,15 +72,17 @@ public class JDBCService {
 
         try (PreparedStatement statement = connection.prepareStatement(selectSql)){
             statement.setString(1, login);
-            ResultSet resultSet = statement.executeQuery(selectSql);
+            ResultSet resultSet = statement.executeQuery();
 
-            User user = new User();
-            user.setId(resultSet.getInt("id"));
-            user.setLogin(resultSet.getString("login"));
-            user.setSalt(resultSet.getString("salt"));
-            user.setVerificator(resultSet.getString("verificator"));
+            if (resultSet.next()) {
+                User user = new User();
+                user.setId(resultSet.getLong("id"));
+                user.setLogin(resultSet.getString("login"));
+                user.setSalt(resultSet.getString("salt"));
+                user.setVerificator(resultSet.getString("verificator"));
 
-            return user;
+                return user;
+            }
         } catch (SQLException e) {
             System.out.println("Ошибка при получении пользователей: " + e.getMessage());
         }

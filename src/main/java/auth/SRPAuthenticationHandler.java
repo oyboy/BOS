@@ -38,46 +38,60 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
     @Override
     public void handleClientAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
         BigInteger a = new BigInteger(N.bitLength(), rnd);
+        System.out.println("a = " + a);
+
         BigInteger A = a.modPow(g, N);
+        System.out.println("A = " + A);
+
         BigInteger k = new BigInteger(
                 HashUtil.generateHash(N.toString(16) + g.toString(16)), 16
         );
+        System.out.println("k = " + k);
 
         String login = "User1";
-        String password = "qwerty";
+        String password = "qwertyy";
 
         System.out.println("Передача l и A");
         out.write(login + "\n"); //l
         out.write(A.toString(16) + "\n"); //A
+        out.flush();
 
         System.out.println("Чтение s и B");
         String salt = in.readLine();
+
         BigInteger B = new BigInteger(in.readLine(), 16);
         if (B.equals("0")) throw new IOException("Client authentication failed: B is 0");
+        System.out.println("B: " + B);
 
         System.out.println("Вычисление x, u");
         BigInteger x = HashUtil.computeX(salt, login, password);
-        BigInteger u = new BigInteger(HashUtil.generateHash(A.toString(16) + B), 16);
+        System.out.println("x: " + x);
 
-        BigInteger Sc = (B.subtract(k.multiply(g.modPow(x,N)))).modPow(a.add(u.multiply(x)), N);
+        BigInteger u = new BigInteger(HashUtil.generateHash(A.toString(16) + B), 16);
+        System.out.println("u: " + u);
+
+        BigInteger Sc = B.subtract(g.modPow(x, N).multiply(k)).modPow(a.add(u.multiply(x)), N);
+        System.out.println("Sc = " + Sc);
+
         String M1 = HashUtil.generateHash(A.toString(16) + B + Sc);
         System.out.println("Передача M1");
         out.write(M1 + "\n");
+        out.flush();
     }
 
     @Override
     public void handleServerAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
-        System.out.println("Получение логина");
         String login = in.readLine();
         System.out.println("Login: " + login);
-        System.out.println("Получение A");
         BigInteger A = new BigInteger(in.readLine(), 16);
+        System.out.println("A: " + A);
         if (A.equals("0")) throw new IOException("Server authentication failed: A is 0");
 
 
         JDBCService jdbc = new JDBCService();
 
         BigInteger b = new BigInteger(N.bitLength(), rnd);
+        System.out.println("b: " + b);
 
         User user = jdbc.getUserFromDB(login);
         if (user == null) throw new IOException("Server authentication failed: user not found");
@@ -87,15 +101,26 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
                 HashUtil.generateHash(N.toString(16) + g.toString(16)),
                 16
         );
-        BigInteger v = new BigInteger(user.getVerificator());
+        System.out.println("k: " + k);
+
+        BigInteger v = new BigInteger(user.getVerificator(), 16);
+        System.out.println("v: " + v);
+
         BigInteger B = v.multiply(k).add(g.modPow(b, N));
+        System.out.println("B: " + B);
+
         BigInteger u = new BigInteger(HashUtil.generateHash(A.toString(16) + B), 16);
+        System.out.println("u: " + u);
 
         System.out.println("Передача s, B");
+        System.out.println("salt = " + user.getSalt());
         out.write(user.getSalt() + "\n"); //s
         out.write(B.toString(16) + "\n"); //B
+        out.flush();
 
-        BigInteger Ss = (A.multiply(v.modPow(u, N))).modPow(b, N);
+        BigInteger Ss = A.multiply(v.modPow(u, N)).modPow(b, N);
+        System.out.println("Ss: " + Ss);
+
         String M1 = in.readLine();
         String M2 = HashUtil.generateHash(A.toString(16) + M1 + Ss);
         System.out.println("M1: " + M1);
