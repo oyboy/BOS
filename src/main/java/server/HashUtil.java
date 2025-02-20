@@ -32,6 +32,14 @@ public class HashUtil {
         }
         return null;
     }
+    public static String[] generateHashChain(String s0, int length) throws IOException {
+        String[] chain = new String[length];
+        chain[0] = s0;
+        for (int i = 1; i < length; i++) {
+            chain[i] = generateHash(chain[i - 1]);
+        }
+        return chain;
+    }
 
     public static BigInteger computeX(String salt, String login, String password) throws IOException {
         //x = H(s | H ( I | ":" | p) ).

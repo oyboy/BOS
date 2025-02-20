@@ -1,18 +1,9 @@
-package server;
+package client.users;
 
-public class User {
-    private long id;
+public class SRPUser extends User {
     private String login;
     private String salt;
     private String verificator;
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
 
     public String getLogin() {
         return login;

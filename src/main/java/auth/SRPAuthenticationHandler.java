@@ -2,7 +2,7 @@ package auth;
 
 import server.HashUtil;
 import server.JDBCService;
-import server.User;
+import client.users.SRPUser;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -25,7 +25,8 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
     @Override
     public void registerUser(String login, String password) throws Exception {
         JDBCService jdbc = new JDBCService();
-        jdbc.createUserTable();
+        jdbc.dropTable();
+        jdbc.createUserTable(new SRPUser());
 
         String s = HashUtil.generateRandomSalt();
         BigInteger x = HashUtil.computeX(s, login, password);
@@ -92,8 +93,8 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         System.out.println("Login: " + login);
 
         JDBCService jdbc = new JDBCService();
-        User user = jdbc.getUserFromDB(login);
-        if (user == null) throw new IOException("Server authentication failed: user not found");
+        SRPUser SRPUser = jdbc.getSRPUserFromDB(login);
+        if (SRPUser == null) throw new IOException("Server authentication failed: user not found");
 
         BigInteger A = new BigInteger(in.readLine(), 16);
         System.out.println("A: " + A.toString(16));
@@ -109,7 +110,7 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         );
         System.out.println("k: " + k);
 
-        BigInteger v = new BigInteger(user.getVerificator(), 16);
+        BigInteger v = new BigInteger(SRPUser.getVerificator(), 16);
         System.out.println("v: " + v.toString(16));
 
         BigInteger B = k.multiply(v).add(g.modPow(b, N)).mod(N);
@@ -122,7 +123,7 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         System.out.println("u: " + u.toString(16));
 
         System.out.println("Передача s, B");
-        out.write(user.getSalt() + "\n"); //s
+        out.write(SRPUser.getSalt() + "\n"); //s
         out.write(B.toString(16) + "\n"); //B
         out.flush();
 
