@@ -8,10 +8,18 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 
+import java.util.List;
+import java.util.Objects;
+
 public class LamportHashChain implements AuthenticationHandler {
     private final int N = 90000;
     private final JDBCService jdbc = new JDBCService();
     private final String serverName = "localhost:8082";
+
+    /*public LamportHashChain() {
+        jdbc.createHistoryTable();
+    }*/
+
     @Override
     public void registerUser(String username, String password) throws Exception {
         jdbc.dropTable();
@@ -39,15 +47,23 @@ public class LamportHashChain implements AuthenticationHandler {
         out.flush();
 
         int A = Integer.parseInt(in.readLine());
+        //A -= 1;
         System.out.println("Получено A: " + A);
 
         System.out.println("Отправка на сервер: " + chain[N-A-1]);
         out.write(chain[N-A-1] + "\n");
         out.flush();
 
-        String result;
-        if ((result = in.readLine()) != null) System.out.println(result);
-        else System.out.println("Авторизация провалена");
+        String result = in.readLine();
+        if (result.startsWith("Рассинхронизация")) {
+            int newA = Integer.parseInt(result.split(": ")[1]);
+
+            out.write(chain[N - newA - 1] + "\n");
+            out.flush();
+
+            result = in.readLine();
+            System.out.println(Objects.requireNonNullElse(result, "Авторизация провалена"));
+        } else System.out.println(result);
     }
 
     @Override
@@ -61,17 +77,45 @@ public class LamportHashChain implements AuthenticationHandler {
 
         String hash = in.readLine();
         System.out.println("Got hash: " + hash);
-        String expected = lamportUser.getHash();
-        System.out.println("Expected: " + expected);
         String actual = HashUtil.generateHash(hash);
         System.out.println("Actual: " + actual);
-        if (!expected.equals(actual)) throw new IOException("Auth error: hashes don't match");
+        String expected = lamportUser.getHash();
+        System.out.println("Expected: " + expected);
 
-        jdbc.updateUser(username, hash, lamportUser.getA() + 1);
+        if (expected.equals(actual)) {
+            jdbc.updateUser(username, hash, lamportUser.getA() + 1);
+            out.write("Авторизация успешна \n");
+            out.flush();
+        } else {
+            if (checkPreviousHashes(username, hash)) {
+                out.write("Рассинхронизация. Текущее значение A: " + lamportUser.getA() + "\n");
+                out.flush();
 
-        out.write("Авторизация успешна \n");
-        out.flush();
+                String newHash = in.readLine();
+                System.out.println("Получен новый хеш от клиента: " + newHash);
+                String newExpected = lamportUser.getHash();
+                String newActual = HashUtil.generateHash(newHash);
+                if (newExpected.equals(newActual)) {
+                    int newA = lamportUser.getA() + 1;
 
-        jdbc.close();
+                    jdbc.updateUser(username, newHash, newA);
+
+                    out.write("Авторизация успешна \n");
+                    out.flush();
+                }
+            } else {
+                out.write("Ошибка аутентификации: хеши не совпадают");
+                out.flush();
+                throw new IOException("Auth error: hashes don't match");
+            }
+        }
+    }
+    /*Проверка рассинхранизации счётчика*/
+    private boolean checkPreviousHashes(String login, String hash) {
+        List<String> previousHashes = jdbc.getPreviousHashes(login);
+        for (String prevHash : previousHashes) {
+            if (prevHash.equals(hash)) return true;
+        }
+        return false;
     }
 }

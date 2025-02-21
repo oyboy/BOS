@@ -5,6 +5,8 @@ import client.users.SRPUser;
 import client.users.User;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JDBCService {
     private final Connection connection;
@@ -27,6 +29,20 @@ public class JDBCService {
             System.out.println("Can't drop user table: " + e.getMessage());
         }
     }
+    public void createHistoryTable(){
+        String query = "CREATE TABLE IF NOT EXISTS lamport_history ("+
+                "id INT AUTO_INCREMENT PRIMARY KEY," +
+                "login VARCHAR(255) NOT NULL," +
+                "hash VARCHAR(255) NOT NULL," +
+                "A INT NOT NULL," +
+                "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(query);
+            System.out.println("Создана таблица истории счётчикоа");
+        } catch (SQLException e) {
+            System.out.println("Ошибка при создании таблицы: " + e.getMessage());
+        }
+    }
 
     public void createUserTable(User user) {
         String createTableQuery = null;
@@ -39,7 +55,7 @@ public class JDBCService {
                 "id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "login VARCHAR(255) NOT NULL, " +
                 "hash VARCHAR(255) NOT NULL," +
-                "A INT NOT NULL DEFAULT 1)";
+                "A INT NOT NULL DEFAULT 0)";
 
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(createTableQuery);
@@ -116,6 +132,33 @@ public class JDBCService {
         } catch (SQLException e) {
             System.out.println("Update user failed: " + e.getMessage());
         }
+        /*Сохранение в таблицу истории*/
+        String insertHistoryQuery = "INSERT INTO lamport_history (login, hash, A) VALUES (?, ?, ?)";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(insertHistoryQuery)) {
+            preparedStatement.setString(1, login);
+            preparedStatement.setString(2, hash);
+            preparedStatement.setInt(3, A);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Insert history failed: " + e.getMessage());
+        }
+    }
+    public List<String> getPreviousHashes(String login) {
+        List<String> previousHashes = new ArrayList<>();
+
+        String selectHistoryQuery = "SELECT hash FROM lamport_history WHERE login = ? ORDER BY timestamp DESC LIMIT 5";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(selectHistoryQuery)) {
+            preparedStatement.setString(1, login);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    String previousHash = resultSet.getString("hash");
+                    previousHashes.add(previousHash);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Select history failed: " + e.getMessage());
+        }
+        return previousHashes;
     }
 
     public SRPUser getSRPUserFromDB(String login) {
