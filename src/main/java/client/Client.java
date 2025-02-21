@@ -1,6 +1,7 @@
 package client;
 
 import auth.AuthenticationContext;
+import auth.LamportHashChain;
 import auth.SRPAuthenticationHandler;
 
 import java.io.*;
@@ -17,14 +18,13 @@ public class Client {
 
             System.out.println("Подключение к серверу установлено.");
 
-            AuthenticationContext context = new AuthenticationContext(new SRPAuthenticationHandler());
+            AuthenticationContext context = new AuthenticationContext(new LamportHashChain());
 
             /*try{
                 context.registerUser("User1", "qwerty");
             } catch (Exception e) {
                 System.out.println("Ошибка регистрации: " + e.getMessage());
             }*/
-
             context.handleClientAuthentication(in, out);
 
         } catch (IOException e) {

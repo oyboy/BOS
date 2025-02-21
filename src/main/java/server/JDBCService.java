@@ -20,7 +20,7 @@ public class JDBCService {
         }
     }
     public void dropTable() {
-        String sql = "DROP TABLE IF EXISTS users";
+        String sql = "DROP TABLE IF EXISTS user";
         try{
             connection.createStatement().executeUpdate(sql);
         } catch (SQLException e) {
@@ -38,7 +38,8 @@ public class JDBCService {
         else if (user instanceof LamportUser) createTableQuery = "CREATE TABLE IF NOT EXISTS user (" +
                 "id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "login VARCHAR(255) NOT NULL, " +
-                "hash VARCHAR(255) NOT NULL)";
+                "hash VARCHAR(255) NOT NULL," +
+                "A INT NOT NULL DEFAULT 1)";
 
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(createTableQuery);
@@ -97,15 +98,16 @@ public class JDBCService {
             System.out.println("Ошибка при добавлении пользователя: " + e.getMessage());
         }
     }
-    public void updateUser(String login, String hash) {
+    public void updateUser(String login, String hash, int A) {
         if (!userExists(login)) {
             System.out.println("Пользователь не найден");
             return;
         }
-        String updateUserQuery = "UPDATE user SET hash = ? WHERE login = ?";
+        String updateUserQuery = "UPDATE user SET hash = ?, A = ? WHERE login = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(updateUserQuery)) {
             preparedStatement.setString(1, hash);
-            preparedStatement.setString(2, login);
+            preparedStatement.setInt(2, A);
+            preparedStatement.setString(3, login);
 
             int rowsUpdated = preparedStatement.executeUpdate();
             if (rowsUpdated > 0) {
@@ -149,6 +151,7 @@ public class JDBCService {
                 lamportUser.setId(resultSet.getLong("id"));
                 lamportUser.setLogin(resultSet.getString("login"));
                 lamportUser.setHash(resultSet.getString("hash"));
+                lamportUser.setA(resultSet.getInt("A"));
 
                 return lamportUser;
             }
