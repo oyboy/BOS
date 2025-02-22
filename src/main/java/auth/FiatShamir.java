@@ -9,15 +9,16 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 
 public class FiatShamir implements AuthenticationHandler {
-    private final int k = 5;
+    private final int k = 7;
     private final int t = 16;
     private final SecureRandom rnd = new SecureRandom();
     private final BigInteger n;
 
     public FiatShamir() {
-        BigInteger p = BigInteger.probablePrime(512, rnd);
-        BigInteger q = BigInteger.probablePrime(512, rnd);
+        BigInteger p = BigInteger.probablePrime(256, rnd);
+        BigInteger q = BigInteger.probablePrime(256, rnd);
         n = p.multiply(q);
+        //n = new BigInteger("12187823");
     }
 
     @Override
@@ -58,8 +59,6 @@ public class FiatShamir implements AuthenticationHandler {
             int[] b = Arrays.stream(in.readLine().split(","))
                     .mapToInt(Integer::parseInt)
                     .toArray();
-            System.out.println("Получен вектор: " + b);
-            printVector(b);
             /*Вычисление y*/
             BigInteger y = r;
             for (int i = 0; i < k; i++) {
@@ -70,11 +69,12 @@ public class FiatShamir implements AuthenticationHandler {
 
             /*Проверка результата*/
             String result = in.readLine();
-            System.out.println("Result: " + result);
-            if (!result.equals("OK")) {
+            //System.out.println("Result: " + result);
+            if (!result.equals("Success")) {
                 throw new IOException("Authentication failed");
             }
         }
+        System.out.println("Successs authentication");
     }
 
     @Override
@@ -87,16 +87,15 @@ public class FiatShamir implements AuthenticationHandler {
         BigInteger[] verifs = user.getVerifs();
 
         for (int round = 0; round < t; round++){
+            System.out.println("---------------------------------");
             System.out.println("Шаг: " + (round+1));
             BigInteger x = new BigInteger(in.readLine());
-            System.out.println("Получено x: " + x);
+            System.out.println("x: " + x);
             /*Отправка битового вектора*/
             int[] b = new int[k];
             for (int i = 0; i < k; i++) {
                 b[i] = rnd.nextInt(2);
             }
-            System.out.println("Отправка вектора: " + b);
-            printVector(b);
             out.write(Arrays.stream(b)
                     .mapToObj(Integer::toString)
                     .reduce((a1, a2) -> a1 + "," + a2)
@@ -106,16 +105,28 @@ public class FiatShamir implements AuthenticationHandler {
 
             /*Проверка условия */
             BigInteger y = new BigInteger(in.readLine());
-            System.out.println("Значение y для сверки: " + y);
-            BigInteger z = y.pow(2);
+            System.out.println("y: " + y);
+            /*BigInteger z = y.pow(2);
+            for (int i = 0; i < k; i++) {
+                if (b[i] == 1) z = z.multiply(verifs[i]);
+            }
+            z = z.mod(n);*/
+            BigInteger z = x;
             for (int i = 0; i < k; i++) {
                 if (b[i] == 1) z = z.multiply(verifs[i]).mod(n);
             }
-            System.out.println("Вычисленное z: " + z);
-            if (z.equals(x.mod(n)) || z.equals(x.mod(n).negate()) && !z.equals(BigInteger.ZERO)) {
+            System.out.println("z: " + z);
+            BigInteger ySquared = y.modPow(BigInteger.TWO, n);
+            System.out.println("y^2 mod n: " + ySquared);
+            /*if (z.equals(ySquared) || z.equals(ySquared.negate()) && !z.equals(BigInteger.ZERO)) {
                 out.write("Success\n");
                 out.flush();
-            } else {
+            }*/
+            if (z.equals(ySquared)) {
+                out.write("Success\n");
+                out.flush();
+            }
+            else {
                 out.write("Fail\n");
                 out.flush();
                 break;
@@ -139,11 +150,5 @@ public class FiatShamir implements AuthenticationHandler {
             }
         }
         return secrets;
-    }
-    private void printVector(int[] b){
-        for (int i = 0; i < b.length; i++) {
-            System.out.print(b[i] + " ");
-        }
-        System.out.println();
     }
 }
