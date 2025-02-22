@@ -32,7 +32,8 @@ public class LamportHashChain implements AuthenticationHandler {
             System.out.println("Current p: " + P);
             n++;
         }
-        jdbc.insertUser(username, P);
+        LamportUser user = new LamportUser(username, P);
+        jdbc.insertUser(user);
     }
 
     @Override

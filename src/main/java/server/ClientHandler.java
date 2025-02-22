@@ -1,6 +1,7 @@
 package server;
 
 import auth.AuthenticationContext;
+import auth.FiatShamir;
 import auth.LamportHashChain;
 import auth.SRPAuthenticationHandler;
 
@@ -21,7 +22,7 @@ public class ClientHandler extends Thread {
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
-            AuthenticationContext context = new AuthenticationContext(new LamportHashChain());
+            AuthenticationContext context = new AuthenticationContext(new FiatShamir());
             context.handleServerAuthentication(in, out);
 
         } catch (IOException e) {

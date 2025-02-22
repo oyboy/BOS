@@ -1,13 +1,11 @@
 package client.users;
 
-public abstract class User {
-    private long id;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
+public interface User {
+    String getLogin();
+    String getInsertQuery();
+    String getCreateTableQuery();
+    void setPreparedStatementParameters(PreparedStatement preparedStatement) throws SQLException;
 }

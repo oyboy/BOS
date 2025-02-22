@@ -1,9 +1,11 @@
 package server;
 
+import client.users.FiatUser;
 import client.users.LamportUser;
 import client.users.SRPUser;
 import client.users.User;
 
+import java.math.BigInteger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,17 +47,7 @@ public class JDBCService {
     }
 
     public void createUserTable(User user) {
-        String createTableQuery = null;
-        if (user instanceof SRPUser) createTableQuery = "CREATE TABLE IF NOT EXISTS user (" +
-                "id INT PRIMARY KEY AUTO_INCREMENT, " +
-                "login VARCHAR(255) UNIQUE NOT NULL, " +
-                "salt VARCHAR(255) NOT NULL, " +
-                "verificator TEXT NOT NULL)";
-        else if (user instanceof LamportUser) createTableQuery = "CREATE TABLE IF NOT EXISTS user (" +
-                "id INT PRIMARY KEY AUTO_INCREMENT, " +
-                "login VARCHAR(255) NOT NULL, " +
-                "hash VARCHAR(255) NOT NULL," +
-                "A INT NOT NULL DEFAULT 0)";
+        String createTableQuery = user.getCreateTableQuery();
 
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(createTableQuery);
@@ -81,39 +73,22 @@ public class JDBCService {
         return false;
     }
 
-    public void insertUser(String login, String salt, String verificator) {
-        if (userExists(login)) {
-            System.out.println("Пользователь с логином " + login + " уже существует.");
+    public void insertUser(User user) {
+        if (userExists(user.getLogin())) {
+            System.out.println("Пользователь с логином " + user.getLogin() + " уже существует.");
             return;
         }
-
-        String insertUserQuery = "INSERT INTO user (login, salt, verificator) VALUES (?, ?, ?)";
+        String insertUserQuery = user.getInsertQuery();
         try (PreparedStatement preparedStatement = connection.prepareStatement(insertUserQuery)) {
-            preparedStatement.setString(1, login);
-            preparedStatement.setString(2, salt);
-            preparedStatement.setString(3, verificator);
+            user.setPreparedStatementParameters(preparedStatement);
             preparedStatement.executeUpdate();
             System.out.println("Пользователь успешно добавлен.");
         } catch (SQLException e) {
             System.out.println("Ошибка при добавлении пользователя: " + e.getMessage());
         }
     }
-    public void insertUser(String login, String hash) {
-        if (userExists(login)) {
-            System.out.println("Пользователь с логином " + login + " уже существует.");
-            return;
-        }
 
-        String insertUserQuery = "INSERT INTO user (login, hash) VALUES (?, ?)";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(insertUserQuery)) {
-            preparedStatement.setString(1, login);
-            preparedStatement.setString(2, hash);
-            preparedStatement.executeUpdate();
-            System.out.println("Пользователь успешно добавлен.");
-        } catch (SQLException e) {
-            System.out.println("Ошибка при добавлении пользователя: " + e.getMessage());
-        }
-    }
+
     public void updateUser(String login, String hash, int A) {
         if (!userExists(login)) {
             System.out.println("Пользователь не найден");
@@ -170,7 +145,7 @@ public class JDBCService {
 
             if (resultSet.next()) {
                 SRPUser SRPUser = new SRPUser();
-                SRPUser.setId(resultSet.getLong("id"));
+                //SRPUser.setId(resultSet.getLong("id"));
                 SRPUser.setLogin(resultSet.getString("login"));
                 SRPUser.setSalt(resultSet.getString("salt"));
                 SRPUser.setVerificator(resultSet.getString("verificator"));
@@ -191,7 +166,7 @@ public class JDBCService {
 
             if (resultSet.next()) {
                 LamportUser lamportUser = new LamportUser();
-                lamportUser.setId(resultSet.getLong("id"));
+               // lamportUser.setId(resultSet.getLong("id"));
                 lamportUser.setLogin(resultSet.getString("login"));
                 lamportUser.setHash(resultSet.getString("hash"));
                 lamportUser.setA(resultSet.getInt("A"));
@@ -203,6 +178,38 @@ public class JDBCService {
         }
         return null;
     }
+    private BigInteger[] stringToBigIntegerArray(String str) {
+        if (str == null || str.isEmpty()) {
+            return new BigInteger[0];
+        }
+        String[] strArr = str.split(",");
+        BigInteger[] arr = new BigInteger[strArr.length];
+        for (int i = 0; i < strArr.length; i++) {
+            arr[i] = new BigInteger(strArr[i].trim());
+        }
+        return arr;
+    }
+    public FiatUser getFiatUserFromDB(String login) {
+        String selectSql = "SELECT * FROM user WHERE login = ?";
+
+        try (PreparedStatement statement = connection.prepareStatement(selectSql)) {
+            statement.setString(1, login);
+            ResultSet resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                String loginFromDB = resultSet.getString("login");
+                String verifsString = resultSet.getString("verifs");
+                BigInteger[] verifs = stringToBigIntegerArray(verifsString);
+
+                return new FiatUser(loginFromDB, verifs);
+            }
+        } catch (SQLException e) {
+            System.out.println("Ошибка при получении FiatUser: " + e.getMessage());
+            return null;
+        }
+        return null;
+    }
+
 
     public void close() {
         if (connection != null) {

@@ -32,7 +32,7 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         BigInteger x = HashUtil.computeX(s, login, password);
         BigInteger v = g.modPow(x, N);
 
-        jdbc.insertUser(login, s, v.toString(16));
+        jdbc.insertUser(new SRPUser(login, s, v.toString(16)));
         jdbc.close();
     }
 
