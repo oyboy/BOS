@@ -1,5 +1,7 @@
 package server;
 
+import auth.CertificationAuthority;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -12,7 +14,7 @@ public class Server {
             System.out.println("Server started on port " + port);
             while(true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected");
+                //System.out.println("Client connected");
 
                 new ClientHandler(clientSocket).start();
             }

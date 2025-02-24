@@ -15,9 +15,7 @@ public class FiatShamir implements AuthenticationHandler {
     private final BigInteger n;
 
     public FiatShamir() {
-        BigInteger p = BigInteger.probablePrime(256, rnd);
-        BigInteger q = BigInteger.probablePrime(256, rnd);
-        n = p.multiply(q);
+        this.n = CertificationAuthority.getInstance().getN();
         //n = new BigInteger("12187823");
     }
 
@@ -43,6 +41,7 @@ public class FiatShamir implements AuthenticationHandler {
 
     @Override
     public void handleClientAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
+        System.out.println("n: " + n);
         BigInteger[] secrets = loadSecretsFromFile();
 
         String login = "User1";

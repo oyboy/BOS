@@ -54,8 +54,8 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         String password = "qwerty";
 
         System.out.println("Передача l и A");
-        out.write(login + "\n"); //l
-        out.write(A.toString(16) + "\n"); //A
+        out.write(login + "\n");
+        out.write(A.toString(16) + "\n");
         out.flush();
 
         String salt = in.readLine();
