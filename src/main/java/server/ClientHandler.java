@@ -22,7 +22,7 @@ public class ClientHandler extends Thread {
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
-            AuthenticationContext context = new AuthenticationContext(new FiatShamir());
+            AuthenticationContext context = new AuthenticationContext(new SRPAuthenticationHandler());
             context.handleServerAuthentication(in, out);
         } catch (IOException e) {
             System.out.println("Error i/o stream: " + e.getMessage());

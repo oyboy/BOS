@@ -7,6 +7,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class FiatShamir implements AuthenticationHandler {
     private final int k = 7;
@@ -15,13 +16,19 @@ public class FiatShamir implements AuthenticationHandler {
     private final BigInteger n;
 
     public FiatShamir() {
-        this.n = CertificationAuthority.getInstance().getN();
-        //n = new BigInteger("12187823");
+        this.n = new BigInteger("EEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C" +
+                "9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE4" +
+                "8E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B29" +
+                "7BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9A" +
+                "FD5138FE8376435B9FC61D2FC0EB06E3",
+            16);
     }
 
     @Override
     public void registerUser(String username, String password) throws Exception {
         JDBCService jdbc = new JDBCService();
+        if (jdbc.userExists(username)) return;
+
         FiatUser user = new FiatUser();
         jdbc.dropTable();
         jdbc.createUserTable(user);
@@ -44,7 +51,9 @@ public class FiatShamir implements AuthenticationHandler {
         System.out.println("n: " + n);
         BigInteger[] secrets = loadSecretsFromFile();
 
-        String login = "User1";
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter login: ");
+        String login = scanner.nextLine();
         out.write(login + "\n");
         out.flush();
 
@@ -73,15 +82,22 @@ public class FiatShamir implements AuthenticationHandler {
                 throw new IOException("Authentication failed");
             }
         }
-        System.out.println("Successs authentication");
+        System.out.println("Success authentication");
     }
 
     @Override
     public void handleServerAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
+        System.out.println("n: " + n);
         JDBCService jdbc = new JDBCService();
         String login = in.readLine();
         System.out.println("Получен запрос на авторизацию: " + login);
         FiatUser user = jdbc.getFiatUserFromDB(login);
+
+        if (user == null) {
+            in.close();
+            out.close();
+            throw new IOException("User does not exist");
+        }
 
         BigInteger[] verifs = user.getVerifs();
 
@@ -105,11 +121,6 @@ public class FiatShamir implements AuthenticationHandler {
             /*Проверка условия */
             BigInteger y = new BigInteger(in.readLine());
             System.out.println("y: " + y);
-            /*BigInteger z = y.pow(2);
-            for (int i = 0; i < k; i++) {
-                if (b[i] == 1) z = z.multiply(verifs[i]);
-            }
-            z = z.mod(n);*/
             BigInteger z = x;
             for (int i = 0; i < k; i++) {
                 if (b[i] == 1) z = z.multiply(verifs[i]).mod(n);
@@ -117,10 +128,6 @@ public class FiatShamir implements AuthenticationHandler {
             System.out.println("z: " + z);
             BigInteger ySquared = y.modPow(BigInteger.TWO, n);
             System.out.println("y^2 mod n: " + ySquared);
-            /*if (z.equals(ySquared) || z.equals(ySquared.negate()) && !z.equals(BigInteger.ZERO)) {
-                out.write("Success\n");
-                out.flush();
-            }*/
             if (z.equals(ySquared)) {
                 out.write("Success\n");
                 out.flush();

@@ -9,6 +9,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.Scanner;
 
 public class SRPAuthenticationHandler implements AuthenticationHandler {
     private static final BigInteger N = new BigInteger(
@@ -25,6 +26,9 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
     @Override
     public void registerUser(String login, String password) throws Exception {
         JDBCService jdbc = new JDBCService();
+
+        if (jdbc.userExists(login)) return;
+
         jdbc.dropTable();
         jdbc.createUserTable(new SRPUser());
 
@@ -38,6 +42,12 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
 
     @Override
     public void handleClientAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter your login: ");
+        String login = scanner.nextLine();
+        System.out.println("Enter your password: ");
+        String password = scanner.nextLine();
+
         BigInteger a = new BigInteger(N.bitLength(), rnd);
         System.out.println("a = " + a);
 
@@ -49,9 +59,6 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
                 16
         );
         System.out.println("k: " + k.toString(16));
-
-        String login = "User1";
-        String password = "qwerty";
 
         System.out.println("Передача l и A");
         out.write(login + "\n");
@@ -84,7 +91,11 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         String M2 = in.readLine();
         System.out.println("M2 = " + M2);
         String expectedM2 = HashUtil.generateHash(A.toString(16) + M1 + Sc.toString(16));
-        if (!M2.equals(expectedM2)) throw new IOException("Client authentication failed: M2 mismatch");
+        if (!M2.equals(expectedM2)) {
+            out.write("FAIL\n");
+            out.flush();
+            throw new IOException("Client authentication failed: M2 mismatch");
+        }
     }
 
     @Override
@@ -94,7 +105,11 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
 
         JDBCService jdbc = new JDBCService();
         SRPUser SRPUser = jdbc.getSRPUserFromDB(login);
-        if (SRPUser == null) throw new IOException("Server authentication failed: user not found");
+        if (SRPUser == null) {
+            in.close();
+            out.close();
+            throw new IOException("Server authentication failed: user not found");
+        }
 
         BigInteger A = new BigInteger(in.readLine(), 16);
         System.out.println("A: " + A.toString(16));
@@ -133,7 +148,11 @@ public class SRPAuthenticationHandler implements AuthenticationHandler {
         String M1 = in.readLine();
         System.out.println("M1 = " + M1);
         String expectedM1 = HashUtil.generateHash(A.toString(16) + B.toString(16) + Ss.toString(16));
-        if (!M1.equals(expectedM1)) throw new IOException("Server authentication failed: M1 mismatch");
+        if (!M1.equals(expectedM1)) {
+            out.write("Failed authentication" + "\n");
+            out.flush();
+            throw new IOException("Server authentication failed: M1 mismatch");
+        }
 
         String M2 = HashUtil.generateHash(A.toString(16) + M1 + Ss.toString(16));
         System.out.println("M2 = " + M2);

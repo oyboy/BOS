@@ -17,12 +17,12 @@ public class Client {
 
             System.out.println("Подключение к серверу установлено.");
 
-            AuthenticationContext context = new AuthenticationContext(new FiatShamir());
-            /*try{
-                context.registerUser("User1", "qwerty");
+            AuthenticationContext context = new AuthenticationContext(new SRPAuthenticationHandler());
+            try{
+                context.registerUser("user", "1234");
             } catch (Exception e) {
                 System.out.println("Ошибка регистрации: " + e.getMessage());
-            }*/
+            }
             context.handleClientAuthentication(in, out);
         } catch (IOException e) {
             System.out.println("Client error: " + e.getMessage());

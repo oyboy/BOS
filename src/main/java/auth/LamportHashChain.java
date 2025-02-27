@@ -10,18 +10,20 @@ import java.io.IOException;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Scanner;
 
 public class LamportHashChain implements AuthenticationHandler {
     private final int N = 90000;
     private final JDBCService jdbc = new JDBCService();
     private final String serverName = "localhost:8082";
 
-    /*public LamportHashChain() {
+    public LamportHashChain() {
         jdbc.createHistoryTable();
-    }*/
+    }
 
     @Override
     public void registerUser(String username, String password) throws Exception {
+        if (jdbc.userExists(username)) return;
         jdbc.dropTable();
         jdbc.createUserTable(new LamportUser());
 
@@ -38,8 +40,12 @@ public class LamportHashChain implements AuthenticationHandler {
 
     @Override
     public void handleClientAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
-        String username = "User1";
-        String password = "qwerty";
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter your login: ");
+        String username = scanner.nextLine();
+        System.out.println("Enter your password: ");
+        String password = scanner.nextLine();
+
         String P = password + " | " + serverName;
         String[] chain = HashUtil.generateHashChain(P, N);
 
@@ -71,7 +77,11 @@ public class LamportHashChain implements AuthenticationHandler {
     public void handleServerAuthentication(BufferedReader in, BufferedWriter out) throws IOException {
         String username = in.readLine();
         LamportUser lamportUser = jdbc.getLamportUserFromDB(username);
-        if (lamportUser == null) throw new IOException("User not found");
+        if (lamportUser == null) {
+            in.close();
+            out.close();
+            throw new IOException("User not found");
+        }
 
         out.write(lamportUser.getA() + "\n");
         out.flush();
